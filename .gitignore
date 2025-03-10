@@ -17,3 +17,6 @@ build/
 # IDE settings
 .idea/
 .vscode/ 
+
+dataset/
+**/dataset/

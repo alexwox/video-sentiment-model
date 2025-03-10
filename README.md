@@ -17,3 +17,13 @@ Two output heads:
 
 - Emotion classifier, 7 emotions.
 - Sentiment classifier, negative, neural, positive.
+
+Plan:
+
+- Download MELD dataset
+- Dataset class (PyTorch)
+- Encoders
+- Fusion
+- Training
+- Evaluation
+- Deployment
