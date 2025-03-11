@@ -11,7 +11,7 @@ Late fusion multimodal model using:
 
 - Video Encoder: Resnet3D 18 layer
 - Text Encoder: BERT
-- Audio Encoder: Raw Spectogram
+- Audio Encoder: Mel Spectogram
 
 Two output heads:
 
