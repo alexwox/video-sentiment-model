@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import pandas as pd
 from transformers import AutoTokenizer
+import os
 
 class MELDDataset(Dataset):
     def __init__(self, csv_path, video_dir):
@@ -29,8 +30,21 @@ class MELDDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+        video_filename = f"""dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}.mp4"""
+        
+        path = os.path.join(self.video_dir, video_filename)
+        video_path = os.path.exists(path)
+        
+        if not video_path:
+            raise FileNotFoundError(f"No video found for filename: {path}")
+        
+        print("File found")
+        
             
         
 if __name__ == "__main__":
     meld = MELDDataset("./dataset/dev/dev_sent_emo.csv", 
                        "./dataset/dev/dev_splits_complete")
+    
+    print(meld[0])
