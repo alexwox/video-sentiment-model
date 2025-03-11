@@ -1,6 +1,7 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
+import torch.utils.data.dataloader
 from transformers import AutoTokenizer
 import os
 import cv2
@@ -157,12 +158,37 @@ class MELDDataset(Dataset):
         except Exception as e:
             print(f"Error processing {path} {str(e)}")
             return None
+
+def collate_fn(batch):
+    batch = list(filter(None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
+
+def prepare_dataloaders(train_csv, train_video_dir, 
+                        dev_csv, dev_video_dir, 
+                        test_csv, test_video_dir, 
+                        batch_size = 32):
+    train_dataset = MELDDataset(train_csv, train_video_dir)
+    dev_dataset = MELDDataset(dev_csv, dev_video_dir)
+    test_dataset = MELDDataset(test_csv, test_video_dir)
         
-        
-            
-        
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    dev_loader = DataLoader(dev_dataset, batch_size=batch_size, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate_fn)
+    
+    return train_loader, dev_loader, test_loader
+
 if __name__ == "__main__":
+    train_loader, dev_loader, test_loader = prepare_dataloaders("./dataset/train/train_sent_emo.csv", 
+                       "./dataset/train/train_splits", "./dataset/dev/dev_sent_emo.csv", 
+                       "./dataset/dev/dev_splits_complete", "./dataset/test/test_sent_emo.csv", 
+                       "./dataset/test/output_repeated_splits_test")
     meld = MELDDataset("./dataset/dev/dev_sent_emo.csv", 
                        "./dataset/dev/dev_splits_complete")
     
-    print(meld[0])
+    for batch in train_loader:
+        print("Text inputs:", batch['text_inputs'])
+        print("Video frames:", batch['video_frames'])
+        print("Audio features:", batch['audio_features']) 
+        print("Emotion label:", batch['emotion_label'])
+        print("Sentiment label:", batch['sentiment_label'])
+        break
