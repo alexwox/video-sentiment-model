@@ -9,6 +9,8 @@ import torch
 import subprocess
 import torchaudio
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 class MELDDataset(Dataset):
     def __init__(self, csv_path, video_dir):
         self.data = pd.read_csv(csv_path)
