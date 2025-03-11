@@ -1,0 +1,29 @@
+[MASTER]
+# Discover python modules
+recursive=yes
+
+[MESSAGES CONTROL]
+# Disable the following checks
+disable=
+    C0111, # missing-docstring
+    C0103, # invalid-name
+    C0303, # trailing-whitespace
+    C0301, # line-too-long
+    W0311, # bad-indentation
+    W0603, # global-statement
+    R0903, # too-few-public-methods
+    R0913, # too-many-arguments
+    R0914, # too-many-locals
+    W0621, # redefined-outer-name
+    W0612, # unused-variable
+    W0703, # broad-except
+    R0801, # duplicate-code
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=120
+
+[BASIC]
+# Regular expression which should only match function or class names
+function-rgx=[a-z_][a-z0-9_]{2,50}$
+class-rgx=[A-Z_][a-zA-Z0-9_]+$ 
