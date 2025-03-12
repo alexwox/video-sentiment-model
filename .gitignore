@@ -18,5 +18,9 @@ build/
 .idea/
 .vscode/ 
 
+# TensorBoard logs
+runs/
+**/runs/
+
 dataset/
 **/dataset/
