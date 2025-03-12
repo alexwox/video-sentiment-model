@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from transformers import BertModel
 from torchvision import models as vision_models
+from meld_dataset import MELDDataset
 
 class TextEncoder(nn.Module):
     def __init__ (self):
@@ -13,14 +14,14 @@ class TextEncoder(nn.Module):
         
         self.projection = nn.Linear(768, 128)
         
-        def forward(self, input_ids, attention_mask):
-            # Extract bert embeddings
-            outputs = self.bert(input_ids=input_ids, attention_mask = attention_mask)
-            
-            # Use [CLS] token representation
-            pooler_output = outputs.pooler_output
-            
-            return self.projection(pooler_output)
+    def forward(self, input_ids, attention_mask):
+        # Extract bert embeddings
+        outputs = self.bert(input_ids=input_ids, attention_mask = attention_mask)
+        
+        # Use [CLS] token representation
+        pooler_output = outputs.pooler_output
+        
+        return self.projection(pooler_output)
 
 class VideoEncoder(nn.Module):
     def __init__(self):
@@ -71,5 +72,105 @@ class AudioEncoder(nn.Module):
         features = self.conv_layers(x)
         return self.projection(features.squeeze(-1))
 
+
+class MultimodalSentimentModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+        self.text_encoder = TextEncoder()
+        self.video_encoder = VideoEncoder()
+        self.audio_encoder = AudioEncoder()
+        
+        self.fusion_layer = nn.Sequential(
+            nn.Linear(128 * 3, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.3)
+        )
+        
+        self.emotion_classifier = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64,7), # 7 Emotions
+        )
+        
+        self.sentiment_classifier = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 3) #Negative, Neutral, Positive
+        )
+    
+    def forward(self, text_inputs, video_frames, audio_features):
+        text_features = self.text_encoder(
+            text_inputs['input_ids'],
+            text_inputs['attention_mask']
+        )
+        
+        video_features = self.video_encoder(video_frames)
+        audio_features = self.audio_encoder(audio_features)
+    
+        combined_features = torch.cat([
+            text_features, 
+            video_features, 
+            audio_features
+        ], dim = 1)
+        
+        fused_features = self.fusion_layer(combined_features)
+        
+        emotion_output = self.emotion_classifier(fused_features)
+        sentiment_output = self.sentiment_classifier(fused_features)
+        
+        return {
+            'emotions': emotion_output, 
+            'sentiments': sentiment_output
+        }
 if __name__ == "__main__":
-    pass
+    dataset = MELDDataset(
+        "./dataset/train/train_sent_emo.csv", 
+        "./dataset/train/train_splits"
+    )
+    
+    sample = dataset[0]
+    model = MultimodalSentimentModel()
+    model.eval()
+    
+    text_inputs = {
+        'input_ids': sample['text_inputs']['input_ids'].unsqueeze(0),
+        'attention_mask': sample['text_inputs']['attention_mask'].unsqueeze(0)
+    }
+    
+    video_frames = sample['video_frames'].unsqueeze(0)
+    audio_features = sample['audio_features'].unsqueeze(0)
+    
+    with torch.inference_mode():
+        outputs = model(text_inputs, video_frames, audio_features)
+        
+        emotion_probs = torch.softmax(outputs['emotions'], dim=1)[0]
+        sentiment_probs = torch.softmax(outputs['sentiments'], dim=1)[0]
+        
+        emotion_map = {
+            0: 'anger',
+            1: 'disgust', 
+            2: 'fear',
+            3: 'joy',
+            4: 'neutral',
+            5: 'sadness',
+            6: 'surprise'
+        }
+        
+        sentiment_map = {
+            0: 'negative', 
+            1: 'neutral', 
+            2: 'positive'
+        }
+        
+        print(f"Predictions for utterance")
+        for i, prob in enumerate(emotion_probs):
+            print(f"{emotion_map[i]}: {prob: .2f}")
+            
+        print("\n")
+        for i, prob in enumerate(sentiment_probs):
+            print(f"{sentiment_map[i]}: {prob: .2f}")
+        
