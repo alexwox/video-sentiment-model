@@ -220,16 +220,31 @@ class MultimodalTrainer:
             patience=2
         )
                 
+        
+        self.current_train_losses =  None
+        
+        # Class weights
+        
+        print("\n Calculating class weights...")
+        emotion_weights, sentiment_weights = compute_class_weights(train_loader.dataset)
+        
+        self.emotion_weights = emotion_weights.to(device)
+        self.sentiment_weights = sentiment_weights.to(devide)
+        
+        print(f"Emotion weights on device: {self.emotion_weights.device}")
+        print(f"Sentiment weights on device: {self.sentiment_weights.device}")
+
         self.emotion_criterion = nn.CrossEntropyLoss(
-            label_smoothing=0.05
+            label_smoothing=0.05,
+            weight = self.emotion_weights
         )
         
         self.sentiment_criterion= nn.CrossEntropyLoss(
-            label_smoothing=0.05
+            label_smoothing=0.05,
+            weight = self.sentiment_weights
         )
         
-        self.current_train_losses =  None
-
+        
     def log_metrics(self, losses, metrics=None, phase = "train"):
         if phase == "train":
             self.current_train_losses = losses
