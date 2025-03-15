@@ -130,7 +130,60 @@ class MultimodalSentimentModel(nn.Module):
             'emotions': emotion_output, 
             'sentiments': sentiment_output
         }
+    
+def compute_class_weights(dataset):
+    emotion_counts = torch.zeros(7)
+    sentiment_counts = torch.zeros(3)
+    skipped = 0
+    total = len(dataset)
+    print("\nCounting class distributions:")
+    for i in range(total):
+        sample = dataset[i]
         
+        if sample is None:
+            skipped +=1
+            continue
+        
+        emotion_label = sample["emotion_label"]
+        sentiment_label = sample["sentiment_label"]
+        
+        emotion_counts[emotion_label] += 1
+        sentiment_counts[sentiment_label] += 1
+    
+    valid = total - skipped
+    print(f"Skipped samples: {skipped}, %: {skipped/total}")
+    print("\nClass distribution")
+    print("Emotions: ")
+    emotion_map = {
+            0: 'anger',
+            1: 'disgust', 
+            2: 'fear',
+            3: 'joy',
+            4: 'neutral',
+            5: 'sadness',
+            6: 'surprise'
+        }
+    for i, count in enumerate(emotion_counts):
+        print(f"{emotion_map[i]}: {count/valid:.2f}")
+    
+    print("Senitments: ")   
+    sentiment_map = {
+        0: 'negative', 
+        1: 'neutral', 
+        2: 'positive'
+    }
+    for i, count in enumerate(sentiment_counts):
+        print(f"{sentiment_map[i]}: {count/valid:.2f}")
+    
+    # Calculate class weights
+    emotion_weights = 1.0 / emotion_counts
+    sentiment_weights = 1.0/ sentiment_counts
+    
+    # Normalize weights
+    emotion_weights = emotion_weights / emotion_weights.sum()
+    sentiment_weights = sentiment_weights / sentiment_weights.sum()
+    
+    return emotion_weights, sentiment_weights
 
 class MultimodalTrainer:
     def __init__(self, model, train_loader, val_loader):
@@ -215,8 +268,8 @@ class MultimodalTrainer:
         for batch in self.train_loader:
             device = next(self.model.parameters()).device
             text_inputs = {
-                'input_ids': batch['text_input']['input_ids'].to(device),
-                'attention_mask': batch['text_input']['attention_mask'].to(device)
+                'input_ids': batch['text_inputs']['input_ids'].to(device),
+                'attention_mask': batch['text_inputs']['attention_mask'].to(device)
             }
             video_frames = batch['video_frames'].to(device)
             audio_features = batch['audio_features'].to(device)
@@ -275,8 +328,8 @@ class MultimodalTrainer:
             for batch in data_loader:
                 device = next(self.model.parameters()).device
                 text_inputs = {
-                    'input_ids': batch['text_input']['input_ids'].to(device),
-                    'attention_mask': batch['text_input']['attention_mask'].to(device)
+                    'input_ids': batch['text_inputs']['input_ids'].to(device),
+                    'attention_mask': batch['text_inputs']['attention_mask'].to(device)
                 }
                 video_frames = batch['video_frames'].to(device)
                 audio_features = batch['audio_features'].to(device)

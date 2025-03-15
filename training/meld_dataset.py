@@ -8,6 +8,7 @@ import cv2
 import torch
 import subprocess
 import torchaudio
+import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -127,21 +128,25 @@ class MELDDataset(Dataset):
         row = self.data.iloc[idx]
         try: 
             video_filename = f"""dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}.mp4"""
-            
             path = os.path.join(self.video_dir, video_filename)
-            video_path_exists = os.path.exists(path)
             
-            if not video_path_exists:
-                raise FileNotFoundError(f"No video found for filename: {path}")
-            
+            if not os.path.exists(path):
+                print(f"Skipping missing file: {path}")
+                return None
+                
+            # Add timeout for video loading
+            start_time = time.time()
+            video_frames = self._load_video_frames(path)
+            if time.time() - start_time > 5:  # 5 second timeout
+                print(f"Timeout loading video: {path}")
+                return None
+                
             text_inputs = self.tokenizer(row['Utterance'], 
                                         padding='max_length', 
                                         truncation=True,
                                         max_length=128,
                                         return_tensors='pt')
             
-            
-            video_frames = self._load_video_frames(path)
             audio_features = self._extract_audio_features(path)
             
             emotion_label = self.emotion_map[row['Emotion'].lower()]
@@ -158,7 +163,7 @@ class MELDDataset(Dataset):
                 'sentiment_label': torch.tensor(sentiment_label)
             }
         except Exception as e:
-            print(f"Error processing {path} {str(e)}")
+            print(f"Error processing {path}: {str(e)}")
             return None
 
 def collate_fn(batch):

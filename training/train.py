@@ -4,7 +4,7 @@ import torchaudio
 import torch
 from meld_dataset import prepare_dataloaders, MELDDataset
 from models import MultimodalSentimentModel, MultimodalTrainer
-import tqdm
+from tqdm import tqdm
 import json
 from install_ffmpeg import install_ffmpeg
 import sys
